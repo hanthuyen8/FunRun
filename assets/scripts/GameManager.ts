@@ -35,7 +35,7 @@ export default class GameManager extends cc.Component
 
         this.blockSpawners.forEach(x => { x.init(blocksContainer); x.setSpeed(500); });
         this.characters[0].init(true, this.characters[1], height);
-        this.characters[1].init(true, this.characters[0], height);
+        this.characters[1].init(false, this.characters[0], height);
     }
 
     public getOpponent(sender: Character)
@@ -75,8 +75,7 @@ export default class GameManager extends cc.Component
                     let blocksSeriesTest = block_series.slice(blocksSeriesLength - BLOCKS_SERIES_TEST_LENGTH, blocksSeriesLength);
                     if (DANGEROUS_BLOCKS_SERIES.includes(blocksSeriesTest.toString()))
                     {
-                        // Thêm space vào để ngăn chặn tình trạng impossible blocks;
-                        cc.log(block_series);
+                        // Skip để thêm space vào để ngăn chặn tình trạng impossible blocks;
                         block_series = [];
                         continue;
                     }
@@ -87,6 +86,14 @@ export default class GameManager extends cc.Component
                 container.addChild(block);
 
                 block.setPosition(startPosX + blockIndex * size, posY_Variant[currentY]);
+
+                if (CC_DEBUG)
+                {
+                    const labelId = new cc.Node().addComponent(cc.Label);
+                    labelId.string = spawnCount.toString();
+                    labelId.node.color = cc.Color.BLACK;
+                    block.addChild(labelId.node);
+                }
             }
             else
             {

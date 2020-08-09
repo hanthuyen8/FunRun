@@ -6,7 +6,8 @@
 //  - https://docs.cocos.com/creator/manual/en/scripting/life-cycle-callbacks.html
 
 import Character from "./Character";
-import { inverseLerpUnclamp } from "./Helper";
+import { inverseLerpUnclamp, clamp } from "./Helper";
+import { MAX_RAYCAST_LENGTH } from "./GameSettings";
 
 const { ccclass, property } = cc._decorator;
 
@@ -82,23 +83,47 @@ export class BlockManager
         this.blockRange_max = blocks.length - 1;
     }
 
-    public isSomethingCollidedOrAhead(targetWRect: cc.Rect): BlockRaycastResult
+    public isSomethingCollidedOrAhead(targetWRect: cc.Rect, rayLength: number, outResult: BlockRaycastResult): boolean
     {
-        const result = new BlockRaycastResult();
         const targetNPos = this.blocks[0].parent.convertToNodeSpaceAR(targetWRect.center);
 
-        const range = this.blocks.slice(this.blocksRange_min, this.blockRange_max + 1).filter(b => b.y === targetNPos.y);
-        const collider = range.find(b => b.getBoundingBoxToWorld().intersects(targetWRect));
-        if (collider)
+        for (let i = this.blocksRange_min; i < this.blocks.length; i++)
         {
-            result.collided = true;
-            result.collidePercent = inverseLerpUnclamp(0, targetWRect.width, collider.x - targetNPos.x);
+            const block = this.blocks[i];
+            if (block.y === targetNPos.y)
+            {
+                const wBlock = block.getBoundingBoxToWorld();
+                if (!outResult.collided && wBlock.intersects(targetWRect))
+                {
+                    // collider
+                    outResult.collided = true;
+                    outResult.collidePercent = inverseLerpUnclamp(0, targetWRect.width, block.x - targetNPos.x);
+                }
+                if (block.x >= targetNPos.x)
+                {
+                    // ahead
+                    outResult.distanceToAhead = clamp(block.x - targetNPos.x, 0, rayLength);
+                    break;
+                }
+            }
         }
-        let aheadBlock = range.find(b => b.x > targetNPos.x);
-        if (aheadBlock)
-            result.distanceToAhead = aheadBlock.x - targetNPos.x;
 
-        return result;
+        if (outResult.collided || outResult.distanceToAhead <= rayLength)
+            return true;
+        return false;
+
+        // const range = this.blocks.slice(this.blocksRange_min, this.blockRange_max + 1).filter(b => b.y === targetNPos.y);
+        // const collider = range.find(b => b.getBoundingBoxToWorld().intersects(targetWRect));
+        // if (collider)
+        // {
+        //     result.collided = true;
+        //     result.collidePercent = inverseLerpUnclamp(0, targetWRect.width, collider.x - targetNPos.x);
+        // }
+        // let aheadBlock = range.find(b => b.x > targetNPos.x);
+        // if (aheadBlock)
+        //     result.distanceToAhead = aheadBlock.x - targetNPos.x;
+
+        // return result;
     }
 
     public checkCollisionWith(targetWorld: cc.Rect): boolean
@@ -163,16 +188,10 @@ export class BlockRaycastResult
     public collidePercent: number = 0;
 
     /** Khoảng cách từ điểm bắn đến block trước mặt. Max value nếu trước mặt ko có gì cả */
-    public distanceToAhead: number = Number.MAX_VALUE;
+    public distanceToAhead: number = MAX_RAYCAST_LENGTH;
 
-    public static findMaxDistance(blocks: BlockRaycastResult[]) : BlockRaycastResult
+    constructor(index: number)
     {
-        let result: BlockRaycastResult = blocks[0];
-        for (const block of blocks)
-        {
-            if (block.distanceToAhead > result.distanceToAhead)
-                result = block;
-        }
-        return result;
+        this.index = index;
     }
 }
