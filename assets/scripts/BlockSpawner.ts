@@ -14,14 +14,13 @@ const { ccclass, property } = cc._decorator;
 @ccclass
 export default class BlockSpawner extends cc.Component
 {
-    @property(Character)
-    private character: Character = null;
-
     public get BlockManager() { return this.blocksManager; }
+    public get RanDeltaDistance() { return this.ranDeltaDistance; }
 
     private blocksContainer: cc.Node;
     private blocksManager: BlockManager;
     private speed: number = 0;
+    private ranDeltaDistance: number;
 
     public init(blocksContainer: cc.Node): void
     {
@@ -29,7 +28,6 @@ export default class BlockSpawner extends cc.Component
         this.node.addChild(clone);
         this.blocksContainer = clone;
         this.blocksManager = new BlockManager(clone.children);
-        this.character.BlockManager = this.blocksManager;
     }
 
     public setSpeed(speed: number)
@@ -42,20 +40,12 @@ export default class BlockSpawner extends cc.Component
         if (this.speed === 0)
             return;
 
-        const character = this.character;
         const blocksContainer = this.blocksContainer;
-        const blocksManager = this.blocksManager;
 
-        const distance = this.speed * dt;
         let pos = blocksContainer.getPosition();
-        pos.x -= distance;
+        this.ranDeltaDistance = this.speed * dt;
+        pos.x -= this.ranDeltaDistance;
         blocksContainer.setPosition(pos);
-
-        const target = character.node.getBoundingBoxToWorld();
-        if (blocksManager.checkCollisionWith(target))
-        {
-            character.dragX(distance);
-        }
     }
 }
 
@@ -85,7 +75,7 @@ export class BlockManager
         this.blockRange_max = blocks.length - 1;
     }
 
-    public getNextTurningPoint(targetWPos: cc.Vec2, fromIndex: number): BlockWatcher
+    public getNextTurningPoint(targetWPos: cc.Vec2, fromIndex: number): BlockTracking
     {
         const targetNPos = this.blocks[0].parent.convertToNodeSpaceAR(targetWPos);
         const blocksLength = this.blocks.length;
@@ -140,9 +130,44 @@ export class BlockManager
             shouldEvadeToY = VARIANT_POS_Y.find(y => y !== this.blocks[blocksLength - 1].y && y !== this.blocks[blocksLength - 2].y)
 
         if (watchedBlock && breakPoint != null && shouldEvadeToY != null)
-            return new BlockWatcher(watchedBlock, index, breakPoint, shouldEvadeToY);
+            return new BlockTracking(watchedBlock, index, breakPoint, shouldEvadeToY);
 
         return null;
+    }
+
+    public getCollisionPointAhead(targetWPos: cc.Vec2, targetWidth: number, fromIndex: number): BlockTracking
+    {
+        const targetNPos = this.blocks[0].parent.convertToNodeSpaceAR(targetWPos);
+        for (let i = fromIndex; i < this.blocks.length; i++)
+        {
+            const block = this.blocks[i];
+            if (block.y === targetNPos.y && block.x > targetNPos.x)
+            {
+                const breakAt = block.parent.x - (block.x - targetNPos.x - targetWidth);
+                return new BlockTracking(block.parent, i, breakAt, null);
+            }
+        }
+        return null;
+    }
+
+    public isCollideWithSomething(targetWPos: cc.Vec2, targetWidth: number, fromIndex: number): boolean
+    {
+        const parent = this.blocks[0].parent;
+        const targetNPos = parent.convertToNodeSpaceAR(targetWPos);
+
+        for (let i = fromIndex; i < this.blocks.length; i++)
+        {
+            const block = this.blocks[i];
+            const distance = block.x - targetNPos.x;
+            if (distance > targetWidth)
+                return false;
+
+            if (block.y === targetNPos.y && Math.abs(distance) < targetWidth)
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
     public isSomethingCollidedOrAhead(targetWRect: cc.Rect, rayLength: number, outResult: BlockRaycastResult): boolean
@@ -258,13 +283,19 @@ export class BlockRaycastResult
     }
 }
 
-export class BlockWatcher
+export class BlockTracking
 {
+    /** Trả về true nếu sự kiện va chạm đã xảy ra */
+    public get IsBroken() { return this.trackThis.x <= this.breakAtX; }
+
     /** Đối tượng cần theo dõi vị trí */
-    public watch: cc.Node;
+    public trackThis: cc.Node;
 
     /** Index của block cần theo dõi */
     public blockIndex: number;
+
+    /** Tại vị trí này sự kiện chưa xảy ra nhưng vẫn có thể break nếu muốn */
+    public mayBreakAtX: number;
 
     /** Nếu vị trí của Block đã tới điểm này thì sự kiện sẽ xảy ra */
     public breakAtX: number;
@@ -274,7 +305,7 @@ export class BlockWatcher
 
     constructor(watchObj: cc.Node, blockIndex: number, breakAtX: number, shouldEvadeToY: number)
     {
-        this.watch = watchObj;
+        this.trackThis = watchObj;
         this.blockIndex = blockIndex;
         this.breakAtX = breakAtX;
         this.shouldEvadeToY = shouldEvadeToY;

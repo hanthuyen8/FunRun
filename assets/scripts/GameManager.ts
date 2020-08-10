@@ -9,6 +9,7 @@ import * as Helper from "./Helper"
 import BlockSpawner from "./BlockSpawner";
 import Character from "./Character";
 import Bot from "./Bots";
+import { VARIANT_POS_Y, BLOCK_SIZE } from "./GameSettings";
 
 const { ccclass, property } = cc._decorator;
 const MIN_SPEED = 200;
@@ -30,15 +31,11 @@ export default class GameManager extends cc.Component
 
     start()
     {
-        let height = this.blockPrefab.data.getBoundingBox().height;
-        const posY_Variant = [-height, 0, height];
-        const spawnPoints = this.generateSpawnPoints(GameMode.HARDMODE_MODE, posY_Variant);
+        const spawnPoints = this.generateSpawnPoints(GameMode.HARDMODE_MODE, VARIANT_POS_Y);
         const blocksContainer = this.generateBlocksFromPoints(spawnPoints);
 
         this.blockSpawners.forEach(x => { x.init(blocksContainer); x.setSpeed(500); });
-        this.characters[0].init(false, this.characters[1], height);
         this.characters[0].addComponent(Bot);
-        this.characters[1].init(false, this.characters[0], height);
     }
 
     public getOpponent(sender: Character)
@@ -93,13 +90,11 @@ export default class GameManager extends cc.Component
                 block_series = [];
             }
         }
-        cc.log("point");
         return points;
     }
 
     private generateBlocksFromPoints(points: cc.Vec2[]): cc.Node
     {
-        cc.log("node");
         const container = new cc.Node("Blocks Container");
         for (let i = 0; i < points.length; i++)
         {
@@ -114,6 +109,7 @@ export default class GameManager extends cc.Component
             {
                 const labelId = new cc.Node().addComponent(cc.Label);
                 labelId.string = i.toString();
+                labelId.cacheMode = cc.Label.CacheMode.BITMAP;
                 labelId.node.color = cc.Color.BLACK;
                 block.addChild(labelId.node);
             }
