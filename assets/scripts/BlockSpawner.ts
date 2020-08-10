@@ -7,7 +7,7 @@
 
 import Character from "./Character";
 import { inverseLerpUnclamp, clamp } from "./Helper";
-import { MAX_RAYCAST_LENGTH } from "./GameSettings";
+import { MAX_RAYCAST_LENGTH, VARIANT_POS_Y } from "./GameSettings";
 
 const { ccclass, property } = cc._decorator;
 
@@ -16,6 +16,8 @@ export default class BlockSpawner extends cc.Component
 {
     @property(Character)
     private character: Character = null;
+
+    public get BlockManager() { return this.blocksManager; }
 
     private blocksContainer: cc.Node;
     private blocksManager: BlockManager;
@@ -83,6 +85,66 @@ export class BlockManager
         this.blockRange_max = blocks.length - 1;
     }
 
+    public getNextTurningPoint(targetWPos: cc.Vec2, fromIndex: number): BlockWatcher
+    {
+        const targetNPos = this.blocks[0].parent.convertToNodeSpaceAR(targetWPos);
+        const blocksLength = this.blocks.length;
+
+        let watchedBlock: cc.Node;
+        let breakPoint: number;
+        let shouldEvadeToY: number;
+        let index: number;
+        for (let i = fromIndex; i < blocksLength; i++)
+        {
+            const block = this.blocks[i];
+            if (block.y === targetNPos.y && block.x > targetNPos.x)
+            {
+                let testBlockIndex = i;
+                let testPrevBlock: cc.Node;
+                let exitable = false;
+                do
+                {
+                    testPrevBlock = this.blocks[--testBlockIndex];
+                    if (this.isExitableBetweenBlocks(block, testPrevBlock))
+                    {
+                        testPrevBlock = this.blocks[++testBlockIndex];
+                        exitable = true;
+                    }
+                }
+                while (!exitable)
+
+                watchedBlock = block.parent;
+                index = i;
+                breakPoint = watchedBlock.x - (testPrevBlock.x - targetNPos.x - block.width);
+                break;
+            }
+        }
+
+        for (let i = index + 1; i < blocksLength; i++)
+        {
+            const block = this.blocks[i];
+            if (block && block.y !== targetNPos.y && block.x > targetNPos.x)
+            {
+                shouldEvadeToY = VARIANT_POS_Y.find(y => y !== block.y && y !== targetNPos.y);
+                let prevBlock = this.blocks[index - 1]
+                if (prevBlock && prevBlock.y === shouldEvadeToY && (prevBlock.x + prevBlock.width) === this.blocks[index].x)
+                {
+                    // Nếu điểm nhảy đến lại trùng vị trí của 1 Block khác
+                    shouldEvadeToY = block.y;
+                }
+                break;
+            }
+        }
+
+        if (index + 1 >= blocksLength && shouldEvadeToY == null)
+            shouldEvadeToY = VARIANT_POS_Y.find(y => y !== this.blocks[blocksLength - 1].y && y !== this.blocks[blocksLength - 2].y)
+
+        if (watchedBlock && breakPoint != null && shouldEvadeToY != null)
+            return new BlockWatcher(watchedBlock, index, breakPoint, shouldEvadeToY);
+
+        return null;
+    }
+
     public isSomethingCollidedOrAhead(targetWRect: cc.Rect, rayLength: number, outResult: BlockRaycastResult): boolean
     {
         const targetNPos = this.blocks[0].parent.convertToNodeSpaceAR(targetWRect.center);
@@ -111,19 +173,6 @@ export class BlockManager
         if (outResult.collided || outResult.distanceToAhead <= rayLength)
             return true;
         return false;
-
-        // const range = this.blocks.slice(this.blocksRange_min, this.blockRange_max + 1).filter(b => b.y === targetNPos.y);
-        // const collider = range.find(b => b.getBoundingBoxToWorld().intersects(targetWRect));
-        // if (collider)
-        // {
-        //     result.collided = true;
-        //     result.collidePercent = inverseLerpUnclamp(0, targetWRect.width, collider.x - targetNPos.x);
-        // }
-        // let aheadBlock = range.find(b => b.x > targetNPos.x);
-        // if (aheadBlock)
-        //     result.distanceToAhead = aheadBlock.x - targetNPos.x;
-
-        // return result;
     }
 
     public checkCollisionWith(targetWorld: cc.Rect): boolean
@@ -174,6 +223,19 @@ export class BlockManager
         }
         return isCollided;
     }
+
+    private isExitableBetweenBlocks(block1: cc.Node, block2: cc.Node): boolean
+    {
+        if (!block1 || !block2)
+            return true;
+
+        const size = block2.width;
+
+        if ((Math.abs(block1.x - block2.x) > size) || (Math.abs(block1.y) - Math.abs(block2.y) !== size))
+            return true;
+
+        return false;
+    }
 }
 
 export class BlockRaycastResult
@@ -193,5 +255,28 @@ export class BlockRaycastResult
     constructor(index: number)
     {
         this.index = index;
+    }
+}
+
+export class BlockWatcher
+{
+    /** Đối tượng cần theo dõi vị trí */
+    public watch: cc.Node;
+
+    /** Index của block cần theo dõi */
+    public blockIndex: number;
+
+    /** Nếu vị trí của Block đã tới điểm này thì sự kiện sẽ xảy ra */
+    public breakAtX: number;
+
+    /** Nếu sự kiện xảy ra thì nên thay thế pos.y sang giá trị này để tránh né */
+    public shouldEvadeToY: number;
+
+    constructor(watchObj: cc.Node, blockIndex: number, breakAtX: number, shouldEvadeToY: number)
+    {
+        this.watch = watchObj;
+        this.blockIndex = blockIndex;
+        this.breakAtX = breakAtX;
+        this.shouldEvadeToY = shouldEvadeToY;
     }
 }

@@ -60,9 +60,9 @@ export default class Character extends cc.Component
 
     update(dt: number)
     {
-        const me = this.node.getBoundingBoxToWorld();
         if (this.autoplay)
         {
+            const me = this.node.getBoundingBoxToWorld();
             if (this.decisionCycle <= 0 && this.blockManager.isSomethingCollidedOrAhead(me, BLOCK_SIZE, new BlockRaycastResult(0)))
             {
                 this.decisionCycle = BOT_DECISION_CYCLE;

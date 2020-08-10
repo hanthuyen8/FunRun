@@ -8,6 +8,7 @@
 import * as Helper from "./Helper"
 import BlockSpawner from "./BlockSpawner";
 import Character from "./Character";
+import Bot from "./Bots";
 
 const { ccclass, property } = cc._decorator;
 const MIN_SPEED = 200;
@@ -31,10 +32,12 @@ export default class GameManager extends cc.Component
     {
         let height = this.blockPrefab.data.getBoundingBox().height;
         const posY_Variant = [-height, 0, height];
-        const blocksContainer = this.generateSpawnPoints(GameMode.HARDMODE_MODE, posY_Variant);
+        const spawnPoints = this.generateSpawnPoints(GameMode.HARDMODE_MODE, posY_Variant);
+        const blocksContainer = this.generateBlocksFromPoints(spawnPoints);
 
         this.blockSpawners.forEach(x => { x.init(blocksContainer); x.setSpeed(500); });
-        this.characters[0].init(true, this.characters[1], height);
+        this.characters[0].init(false, this.characters[1], height);
+        this.characters[0].addComponent(Bot);
         this.characters[1].init(false, this.characters[0], height);
     }
 
@@ -43,10 +46,10 @@ export default class GameManager extends cc.Component
         return this.characters.find(x => x !== sender);
     }
 
-    private generateSpawnPoints(gameMode: GameMode, posY_Variant: number[]): cc.Node
+    private generateSpawnPoints(gameMode: GameMode, posY_Variant: number[]): cc.Vec2[]
     {
         const startPosX = cc.Canvas.instance.node.width / 2;
-        const container = new cc.Node("Blocks Container");
+        const points: cc.Vec2[] = [];
         const size = this.blockPrefab.data.width;
         const maxYIndex = posY_Variant.length - 1;
 
@@ -81,19 +84,8 @@ export default class GameManager extends cc.Component
                     }
                 }
 
-                const block = cc.instantiate(this.blockPrefab);
-                block.name += spawnCount++;
-                container.addChild(block);
-
-                block.setPosition(startPosX + blockIndex * size, posY_Variant[currentY]);
-
-                if (CC_DEBUG)
-                {
-                    const labelId = new cc.Node().addComponent(cc.Label);
-                    labelId.string = spawnCount.toString();
-                    labelId.node.color = cc.Color.BLACK;
-                    block.addChild(labelId.node);
-                }
+                points.push(cc.v2(startPosX + blockIndex * size, posY_Variant[currentY]));
+                spawnCount++;
             }
             else
             {
@@ -101,7 +93,92 @@ export default class GameManager extends cc.Component
                 block_series = [];
             }
         }
+        cc.log("point");
+        return points;
+    }
+
+    private generateBlocksFromPoints(points: cc.Vec2[]): cc.Node
+    {
+        cc.log("node");
+        const container = new cc.Node("Blocks Container");
+        for (let i = 0; i < points.length; i++)
+        {
+            const point = points[i];
+            const block = cc.instantiate(this.blockPrefab);
+            block.name += i;
+            container.addChild(block);
+
+            block.setPosition(point);
+
+            if (CC_DEBUG)
+            {
+                const labelId = new cc.Node().addComponent(cc.Label);
+                labelId.string = i.toString();
+                labelId.node.color = cc.Color.BLACK;
+                block.addChild(labelId.node);
+            }
+        }
         return container;
+    }
+
+    private findPathToExit(startPos: cc.Vec2, exitPos: cc.Vec2, posY_Variant: number[], blocks: cc.Vec2[], blockSize: number) : cc.Vec2[]
+    {
+        const paths: cc.Vec2[] = [];
+        let obstaclesY: number[] = [];
+        let currentPos: cc.Vec2 = startPos;
+        let currentlyAtBlockIndex: number;
+
+        while (!currentPos.equals(exitPos))
+        {
+            currentlyAtBlockIndex = findNextBlock_WithSameY();
+            const aheadBlock = blocks[currentlyAtBlockIndex];
+            obstaclesY.push(aheadBlock.y);
+
+            currentPos = cc.v2(aheadBlock.x - blockSize, aheadBlock.y);
+            paths.push(currentPos);
+
+            const nextBlockIndex = findNextBlock_WithDifferentY();
+            obstaclesY.push(blocks[nextBlockIndex].y);
+
+            currentPos = cc.v2(aheadBlock.x - blockSize, getDifferentElementOf(posY_Variant, obstaclesY));
+            paths.push(currentPos);
+            obstaclesY = [];
+        }
+
+        return paths;
+
+        function findNextBlock_WithSameY(): number
+        {
+            for (let i = currentlyAtBlockIndex; i < blocks.length; i++)
+            {
+                const block = blocks[i];
+                if (block.y === currentPos.y && block.x > currentPos.x)
+                {
+                    return i;
+                }
+            }
+        }
+
+        function findNextBlock_WithDifferentY(): number
+        {
+            for (let i = currentlyAtBlockIndex; i < blocks.length; i++)
+            {
+                const block = blocks[i];
+                if (block.y !== currentPos.y && block.x > currentPos.x)
+                {
+                    return i;
+                }
+            }
+        }
+
+        function getDifferentElementOf(origin: number[], subtract: number[]): number
+        {
+            for (const e of origin)
+            {
+                if (!subtract.includes(e))
+                    return e;
+            }
+        }
     }
 }
 
@@ -109,7 +186,7 @@ class GameMode
 {
     public static readonly EASY_MODE = new GameMode(150, 2, 4);
     public static readonly MEDIUM_MODE = new GameMode(200, 1, 3);
-    public static readonly HARDMODE_MODE = new GameMode(250, 0, 2);
+    public static readonly HARDMODE_MODE = new GameMode(50, 0, 2);
 
     public readonly blockAmount: number;
     public readonly minDistanceX_Variant: number;
