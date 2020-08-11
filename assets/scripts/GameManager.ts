@@ -29,6 +29,9 @@ export default class GameManager extends cc.Component
     @property([Character])
     private characters: Character[] = [];
 
+    @property(cc.BitmapFont)
+    private font: cc.BitmapFont = null;
+
     start()
     {
         const spawnPoints = this.generateSpawnPoints(GameMode.HARDMODE_MODE, VARIANT_POS_Y);
@@ -109,7 +112,7 @@ export default class GameManager extends cc.Component
             {
                 const labelId = new cc.Node().addComponent(cc.Label);
                 labelId.string = i.toString();
-                labelId.cacheMode = cc.Label.CacheMode.BITMAP;
+                labelId.font = this.font;
                 labelId.node.color = cc.Color.BLACK;
                 block.addChild(labelId.node);
             }
@@ -117,7 +120,7 @@ export default class GameManager extends cc.Component
         return container;
     }
 
-    private findPathToExit(startPos: cc.Vec2, exitPos: cc.Vec2, posY_Variant: number[], blocks: cc.Vec2[], blockSize: number) : cc.Vec2[]
+    private findPathToExit(startPos: cc.Vec2, exitPos: cc.Vec2, posY_Variant: number[], blocks: cc.Vec2[], blockSize: number): cc.Vec2[]
     {
         const paths: cc.Vec2[] = [];
         let obstaclesY: number[] = [];
@@ -182,7 +185,7 @@ class GameMode
 {
     public static readonly EASY_MODE = new GameMode(150, 2, 4);
     public static readonly MEDIUM_MODE = new GameMode(200, 1, 3);
-    public static readonly HARDMODE_MODE = new GameMode(20, 0, 2);
+    public static readonly HARDMODE_MODE = new GameMode(200, 0, 2);
 
     public readonly blockAmount: number;
     public readonly minDistanceX_Variant: number;

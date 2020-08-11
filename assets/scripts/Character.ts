@@ -74,12 +74,12 @@ export default class Character extends cc.Component
 
     private checkCollisionAndGetNewBlockTracker()
     {
-        let fromIndex = 0;
-        if (this.currentBlockTracker)
-            fromIndex = this.currentBlockTracker.hitBlockIndex;
+        // let fromIndex = 0;
+        // if (this.currentBlockTracker)
+        //     fromIndex = this.currentBlockTracker.hitBlockIndex;
         
-        this.isDamage = this.blockManager.isCollideWithSomething(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, fromIndex);
-        this.currentBlockTracker = this.blockManager.getCollisionPointAhead(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, fromIndex);
+        this.isDamage = this.blockManager.isCollideWithSomething(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, 0);
+        this.currentBlockTracker = this.blockManager.getCollisionPointAhead(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, 0);
     }
 
     private tryToGoUp(): boolean

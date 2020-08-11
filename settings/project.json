@@ -8,8 +8,10 @@
     ]
   ],
   "excluded-modules": [
+    "Collider",
     "Mesh",
     "MotionStreak",
+    "Physics",
     "TiledMap",
     "VideoPlayer",
     "WebView",
@@ -40,5 +42,6 @@
     "live": {
       "enable": false
     }
-  }
+  },
+  "last-module-event-record-time": 1597136046401
 }
