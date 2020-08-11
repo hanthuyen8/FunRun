@@ -6,7 +6,7 @@
 //  - https://docs.cocos.com/creator/manual/en/scripting/life-cycle-callbacks.html
 
 import * as Helper from "./Helper"
-import BlockSpawner, { BlockManager, BlockRaycastResult, BlockTracking } from "./BlockSpawner"
+import BlockSpawner, { BlockManager, BlockTracking } from "./BlockSpawner"
 import { MAX_RAYCAST_LENGTH, MAX_ROW_OF_LANE, CANVAS_WIDTH, BLOCK_SIZE, VARIANT_POS_Y } from "./GameSettings";
 
 const { ccclass, property } = cc._decorator;
@@ -15,7 +15,6 @@ const { ccclass, property } = cc._decorator;
 export default class Character extends cc.Component
 {
     private currentPosYIndex: number = 1;
-    private maxPosYIndex: number = 2;
     private startWPosY: number;
 
     private startPosX: number;
@@ -44,6 +43,7 @@ export default class Character extends cc.Component
         {
             this.checkCollisionAndGetNewBlockTracker();
             cc.systemEvent.on(cc.SystemEvent.EventType.KEY_UP, this.onKeyUp, this);
+            cc.log(this.currentBlockTracker);
         }
     }
 
@@ -52,7 +52,7 @@ export default class Character extends cc.Component
         if (!this.currentBlockTracker)
             return;
 
-        if (this.isDamage || (this.currentBlockTracker && this.currentBlockTracker.IsBroken))
+        if (this.isDamage || (this.currentBlockTracker && this.currentBlockTracker.IsHitted))
         {
             let characterPos = this.node.getPosition();
             characterPos.x -= this.blockSpawner.RanDeltaDistance;
@@ -60,7 +60,7 @@ export default class Character extends cc.Component
 
             if (characterPos.x <= this.deathPosX)
             {
-                cc.log("Game Over");
+                //cc.log("Game Over");
             }
 
             this.winPercentage = Helper.inverseLerpClamp(this.deathPosX, this.startPosX, characterPos.x)
@@ -74,13 +74,17 @@ export default class Character extends cc.Component
 
     private checkCollisionAndGetNewBlockTracker()
     {
-        this.isDamage = this.blockManager.isCollideWithSomething(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, 0);
-        this.currentBlockTracker = this.blockManager.getCollisionPointAhead(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, 0);
+        let fromIndex = 0;
+        if (this.currentBlockTracker)
+            fromIndex = this.currentBlockTracker.hitBlockIndex;
+        
+        this.isDamage = this.blockManager.isCollideWithSomething(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, fromIndex);
+        this.currentBlockTracker = this.blockManager.getCollisionPointAhead(this.node.convertToWorldSpaceAR(cc.Vec2.ZERO), this.node.width, fromIndex);
     }
 
     private tryToGoUp(): boolean
     {
-        if (this.currentPosYIndex === this.maxPosYIndex)
+        if (this.currentPosYIndex === VARIANT_POS_Y.length - 1)
             return false;
 
         let pos = this.node.getPosition();

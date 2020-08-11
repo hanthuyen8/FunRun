@@ -28,22 +28,23 @@ export default class Bot extends cc.Component
         if (!this.blockTracker)
             return;
 
-        if (this.blockTracker.IsBroken)
+        if (this.blockTracker.IsHitted)
         {
             let pos = this.node.getPosition();
-            if (pos.y < this.blockTracker.shouldEvadeToY)
+            let evadeToY = this.blockTracker.evadeToY;
+            if (pos.y < evadeToY)
             {
                 pos.y = VARIANT_POS_Y.find(y => y > pos.y);
                 this.node.setPosition(pos);
             }
-            else if (pos.y > this.blockTracker.shouldEvadeToY)
+            else if (pos.y > evadeToY)
             {
                 pos.y = VARIANT_POS_Y.find(y => y < pos.y);
                 this.node.setPosition(pos);
             }
             else
             {
-                this.blockTracker = this.blockManager.getNextTurningPoint(this.node.parent.convertToWorldSpaceAR(pos), this.blockTracker.blockIndex);
+                this.blockTracker = this.blockManager.getNextTurningPoint(this.node.parent.convertToWorldSpaceAR(pos), this.blockTracker.hitBlockIndex);
             }
         }
     }

@@ -182,7 +182,7 @@ class GameMode
 {
     public static readonly EASY_MODE = new GameMode(150, 2, 4);
     public static readonly MEDIUM_MODE = new GameMode(200, 1, 3);
-    public static readonly HARDMODE_MODE = new GameMode(50, 0, 2);
+    public static readonly HARDMODE_MODE = new GameMode(20, 0, 2);
 
     public readonly blockAmount: number;
     public readonly minDistanceX_Variant: number;
